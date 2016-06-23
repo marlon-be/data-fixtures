@@ -149,6 +149,24 @@ class Loader
      */
     public function getFixtures()
     {
+        $fixtures = $this->fixtures;
+        $fixtureClasses = $this->getFixtureClasses($fixtures);
+
+        // remove original fixture classes which have project overrides
+        $loader = $this;
+        $fixtures = array_filter($fixtures, function($current) use ($fixtureClasses, $loader) {
+            $fixtureClassParts = explode('\\', get_class($current));
+            $projectNamespace = array_shift($fixtureClassParts);
+
+            if ($projectNamespace === 'Fratello'
+                && isset($fixtureClasses[$loader->resolveClassFQDNOverride(get_class($current))])) {
+                return false;
+            }
+
+            return true;
+        });
+        $this->fixtures = $fixtures;
+
         $this->orderedFixtures = array();
 
         if ($this->orderFixturesByNumber) {
@@ -238,8 +256,8 @@ class Loader
             if ($fixture instanceof OrderedFixtureInterface) {
                 continue;
             } elseif ($fixture instanceof DependentFixtureInterface) {
-                $dependenciesClasses = $fixture->getDependencies();
-                
+                $dependenciesClasses = $this->resolveOverruledDependencies($fixture->getDependencies());
+
                 $this->validateDependencies($dependenciesClasses);
 
                 if (!is_array($dependenciesClasses) || empty($dependenciesClasses)) {
@@ -362,5 +380,27 @@ class Loader
         }
 
         return $fixtures;
+    }
+
+    private function getFixtureClasses(array $fixtures)
+    {
+        return array_map(function($fixtureClass) { return get_class($fixtureClass); }, $fixtures);
+    }
+
+    private function resolveClassFQDNOverride($originalFQDN, $projectNamespace = 'Arseus')
+    {
+        $fqdnParts = explode('\\', $originalFQDN);
+        array_shift($fqdnParts); // strip original namespace
+
+        return implode('\\', array_merge(array($projectNamespace), $fqdnParts));
+    }
+
+    private function resolveOverruledDependencies(array $dependenciesClasses)
+    {
+        return array_map(function($dependencyClass) {
+            return in_array($dependencyClass, $this->getFixtureClasses($this->fixtures))
+                ? $dependencyClass
+                : $this->resolveClassFQDNOverride($dependencyClass);
+        }, $dependenciesClasses);
     }
 }
