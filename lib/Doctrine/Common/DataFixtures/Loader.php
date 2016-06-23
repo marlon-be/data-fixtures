@@ -63,6 +63,17 @@ class Loader
      */
     private $fileExtension = '.php';
 
+    /** @var string */
+    private $projectNamespace;
+
+    /**
+     * @param string $projectNamespace
+     */
+    public function setProjectNamespace($projectNamespace)
+    {
+        $this->projectNamespace = $projectNamespace;
+    }
+
     /**
      * Find fixtures classes in a given directory and load them.
      *
@@ -121,7 +132,7 @@ class Loader
 
         if (!isset($this->fixtures[$fixtureClass])) {
             if ($fixture instanceof OrderedFixtureInterface && $fixture instanceof DependentFixtureInterface) {
-                throw new \InvalidArgumentException(sprintf('Class "%s" can\'t implement "%s" and "%s" at the same time.', 
+                throw new \InvalidArgumentException(sprintf('Class "%s" can\'t implement "%s" and "%s" at the same time.',
                     get_class($fixture),
                     'OrderedFixtureInterface',
                     'DependentFixtureInterface'));
@@ -387,12 +398,12 @@ class Loader
         return array_map(function($fixtureClass) { return get_class($fixtureClass); }, $fixtures);
     }
 
-    private function resolveClassFQDNOverride($originalFQDN, $projectNamespace = 'Arseus')
+    private function resolveClassFQDNOverride($originalFQDN)
     {
         $fqdnParts = explode('\\', $originalFQDN);
         array_shift($fqdnParts); // strip original namespace
 
-        return implode('\\', array_merge(array($projectNamespace), $fqdnParts));
+        return implode('\\', array_merge(array($this->projectNamespace), $fqdnParts));
     }
 
     private function resolveOverruledDependencies(array $dependenciesClasses)
