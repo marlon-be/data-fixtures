@@ -160,23 +160,25 @@ class Loader
      */
     public function getFixtures()
     {
-        $fixtures = $this->fixtures;
-        $fixtureClasses = $this->getFixtureClasses($fixtures);
+        if ($this->projectNamespace) {
+            $fixtures = $this->fixtures;
+            $fixtureClasses = $this->getFixtureClasses($fixtures);
 
-        // remove original fixture classes which have project overrides
-        $loader = $this;
-        $fixtures = array_filter($fixtures, function($current) use ($fixtureClasses, $loader) {
-            $fixtureClassParts = explode('\\', get_class($current));
-            $projectNamespace = array_shift($fixtureClassParts);
+            // remove original fixture classes which have project overrides
+            $loader = $this;
+            $fixtures = array_filter($fixtures, function($current) use ($fixtureClasses, $loader) {
+                $fixtureClassParts = explode('\\', get_class($current));
+                $projectNamespace = array_shift($fixtureClassParts);
 
-            if ($projectNamespace === 'Fratello'
-                && isset($fixtureClasses[$loader->resolveClassFQDNOverride(get_class($current))])) {
-                return false;
-            }
+                if ($projectNamespace === 'Fratello'
+                    && isset($fixtureClasses[$loader->resolveClassFQDNOverride(get_class($current))])) {
+                    return false;
+                }
 
-            return true;
-        });
-        $this->fixtures = $fixtures;
+                return true;
+            });
+            $this->fixtures = $fixtures;
+        }
 
         $this->orderedFixtures = array();
 
