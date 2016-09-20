@@ -22,7 +22,7 @@ namespace Doctrine\Test\DataFixtures\Sorter;
 
 use Doctrine\Common\DataFixtures\Exception\CircularReferenceException;
 use Doctrine\Common\DataFixtures\Sorter\TopologicalSorter;
-use Doctrine\Tests\Mock;
+use Doctrine\ORM\Mapping\ClassMetadata;
 
 /**
  * TopologicalSorter tests.
@@ -37,39 +37,28 @@ use Doctrine\Tests\Mock;
  */
 class TopologicalSorterTest extends \PHPUnit_Framework_TestCase
 {
-    /**
-     * @var \Doctrine\Common\DataFixtures\Sorter\TopologicalSorter
-     */
-    private $sorter;
-
-    /**
-     * {@inheritdoc}
-     */
-    public function setUp()
-    {
-        $this->sorter = new TopologicalSorter();
-    }
-
     public function testSuccessSortLinearDependency()
     {
-        $node1 = new Mock\Node(1);
-        $node2 = new Mock\Node(2);
-        $node3 = new Mock\Node(3);
-        $node4 = new Mock\Node(4);
-        $node5 = new Mock\Node(5);
+        $sorter = new TopologicalSorter();
 
-        $this->sorter->addNode('1', $node1);
-        $this->sorter->addNode('2', $node2);
-        $this->sorter->addNode('3', $node3);
-        $this->sorter->addNode('4', $node4);
-        $this->sorter->addNode('5', $node5);
+        $node1 = new ClassMetadata(1);
+        $node2 = new ClassMetadata(2);
+        $node3 = new ClassMetadata(3);
+        $node4 = new ClassMetadata(4);
+        $node5 = new ClassMetadata(5);
 
-        $this->sorter->addDependency('1', '2');
-        $this->sorter->addDependency('2', '3');
-        $this->sorter->addDependency('3', '4');
-        $this->sorter->addDependency('5', '1');
+        $sorter->addNode('1', $node1);
+        $sorter->addNode('2', $node2);
+        $sorter->addNode('3', $node3);
+        $sorter->addNode('4', $node4);
+        $sorter->addNode('5', $node5);
 
-        $sortedList  = $this->sorter->sort();
+        $sorter->addDependency('1', '2');
+        $sorter->addDependency('2', '3');
+        $sorter->addDependency('3', '4');
+        $sorter->addDependency('5', '1');
+
+        $sortedList  = $sorter->sort();
         $correctList = array($node4, $node3, $node2, $node1, $node5);
 
         self::assertSame($correctList, $sortedList);
@@ -77,70 +66,100 @@ class TopologicalSorterTest extends \PHPUnit_Framework_TestCase
 
     public function testSuccessSortMultiDependency()
     {
-        $node1 = new Mock\Node(1);
-        $node2 = new Mock\Node(2);
-        $node3 = new Mock\Node(3);
-        $node4 = new Mock\Node(4);
-        $node5 = new Mock\Node(5);
+        $sorter = new TopologicalSorter();
 
-        $this->sorter->addNode('1', $node1);
-        $this->sorter->addNode('2', $node2);
-        $this->sorter->addNode('3', $node3);
-        $this->sorter->addNode('4', $node4);
-        $this->sorter->addNode('5', $node5);
+        $node1 = new ClassMetadata(1);
+        $node2 = new ClassMetadata(2);
+        $node3 = new ClassMetadata(3);
+        $node4 = new ClassMetadata(4);
+        $node5 = new ClassMetadata(5);
 
-        $this->sorter->addDependency('3', '2');
-        $this->sorter->addDependency('3', '4');
-        $this->sorter->addDependency('3', '5');
-        $this->sorter->addDependency('4', '1');
-        $this->sorter->addDependency('5', '1');
+        $sorter->addNode('1', $node1);
+        $sorter->addNode('2', $node2);
+        $sorter->addNode('3', $node3);
+        $sorter->addNode('4', $node4);
+        $sorter->addNode('5', $node5);
 
-        $sortedList  = $this->sorter->sort();
+        $sorter->addDependency('3', '2');
+        $sorter->addDependency('3', '4');
+        $sorter->addDependency('3', '5');
+        $sorter->addDependency('4', '1');
+        $sorter->addDependency('5', '1');
+
+        $sortedList  = $sorter->sort();
         $correctList = array($node1, $node2, $node4, $node5, $node3);
 
         self::assertSame($correctList, $sortedList);
     }
 
+    public function testSortCyclicDependency()
+    {
+        $sorter = new TopologicalSorter();
+
+        $node1 = new ClassMetadata(1);
+        $node2 = new ClassMetadata(2);
+        $node3 = new ClassMetadata(3);
+
+        $sorter->addNode('1', $node1);
+        $sorter->addNode('2', $node2);
+        $sorter->addNode('3', $node3);
+
+        $sorter->addDependency('1', '2');
+        $sorter->addDependency('2', '3');
+        $sorter->addDependency('3', '1');
+
+        $sortedList  = $sorter->sort();
+        $correctList = array($node3, $node2, $node1);
+
+        self::assertSame($correctList, $sortedList);
+
+        $sorter->sort();
+    }
+
     public function testFailureSortCyclicDependency()
     {
-        $node1 = new Mock\Node(1);
-        $node2 = new Mock\Node(2);
-        $node3 = new Mock\Node(3);
+        $sorter = new TopologicalSorter(false);
 
-        $this->sorter->addNode('1', $node1);
-        $this->sorter->addNode('2', $node2);
-        $this->sorter->addNode('3', $node3);
+        $node1 = new ClassMetadata(1);
+        $node2 = new ClassMetadata(2);
+        $node3 = new ClassMetadata(3);
 
-        $this->sorter->addDependency('1', '2');
-        $this->sorter->addDependency('2', '3');
-        $this->sorter->addDependency('3', '1');
+        $sorter->addNode('1', $node1);
+        $sorter->addNode('2', $node2);
+        $sorter->addNode('3', $node3);
+
+        $sorter->addDependency('1', '2');
+        $sorter->addDependency('2', '3');
+        $sorter->addDependency('3', '1');
 
         $this->expectException(CircularReferenceException::class);
 
-        $this->sorter->sort();
+        $sorter->sort();
     }
 
     public function testNoFailureOnSelfReferencingDependency()
     {
-        $node1 = new Mock\Node(1);
-        $node2 = new Mock\Node(2);
-        $node3 = new Mock\Node(3);
-        $node4 = new Mock\Node(4);
-        $node5 = new Mock\Node(5);
+        $sorter = new TopologicalSorter();
 
-        $this->sorter->addNode('1', $node1);
-        $this->sorter->addNode('2', $node2);
-        $this->sorter->addNode('3', $node3);
-        $this->sorter->addNode('4', $node4);
-        $this->sorter->addNode('5', $node5);
+        $node1 = new ClassMetadata(1);
+        $node2 = new ClassMetadata(2);
+        $node3 = new ClassMetadata(3);
+        $node4 = new ClassMetadata(4);
+        $node5 = new ClassMetadata(5);
 
-        $this->sorter->addDependency('1', '2');
-        $this->sorter->addDependency('1', '1');
-        $this->sorter->addDependency('2', '3');
-        $this->sorter->addDependency('3', '4');
-        $this->sorter->addDependency('5', '1');
+        $sorter->addNode('1', $node1);
+        $sorter->addNode('2', $node2);
+        $sorter->addNode('3', $node3);
+        $sorter->addNode('4', $node4);
+        $sorter->addNode('5', $node5);
 
-        $sortedList  = $this->sorter->sort();
+        $sorter->addDependency('1', '2');
+        $sorter->addDependency('1', '1');
+        $sorter->addDependency('2', '3');
+        $sorter->addDependency('3', '4');
+        $sorter->addDependency('5', '1');
+
+        $sortedList  = $sorter->sort();
         $correctList = array($node4, $node3, $node2, $node1, $node5);
 
         self::assertSame($correctList, $sortedList);
@@ -148,14 +167,16 @@ class TopologicalSorterTest extends \PHPUnit_Framework_TestCase
 
     public function testFailureSortMissingDependency()
     {
-        $node1 = new Mock\Node(1);
+        $sorter = new TopologicalSorter();
 
-        $this->sorter->addNode('1', $node1);
+        $node1 = new ClassMetadata(1);
 
-        $this->sorter->addDependency('1', '2');
+        $sorter->addNode('1', $node1);
+
+        $sorter->addDependency('1', '2');
 
         $this->expectException(\RuntimeException::class);
 
-        $this->sorter->sort();
+        $sorter->sort();
     }
 }
